@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brampton Triage AI</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 40px 20px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+        h2 { margin-bottom: 4px; }
+        .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 24px; }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #888;
+            margin: 28px 0 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+        }
+
+        .q-box { margin-bottom: 20px; }
+        .q-label { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; }
+        .q-val { color: #007bff; }
+        input[type="range"] { width: 100%; margin-bottom: 4px; accent-color: #007bff; }
+        .range-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #999; }
+
+        .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .radio-group label {
+            padding: 7px 14px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .radio-group input { display: none; }
+        .radio-group label:has(input:checked) {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .checkbox-group label {
+            padding: 7px 14px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .checkbox-group input { display: none; }
+        .checkbox-group label:has(input:checked) {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .age-input input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 72px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 0.9rem;
+            resize: none;
+        }
+
+        button.submit-btn {
+            width: 100%;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 24px;
+        }
+        button.submit-btn:hover { background: #0056cc; }
+        button.submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+        #results {
+            display: none;
+            margin-top: 28px;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #007bff;
+            background: #f8f9ff;
+        }
+        .result-label { font-size: 0.8rem; color: #666; margin-bottom: 4px; }
+        .result-name { font-size: 1.4rem; font-weight: bold; color: #007bff; margin-bottom: 12px; }
+        .result-meta { display: flex; gap: 20px; flex-wrap: wrap; }
+        .result-chip {
+            background: #e9ecef;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .result-chip span { font-weight: bold; }
+
+        .ctas-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .ctas-1 { background: #dc3545; color: white; }
+        .ctas-2 { background: #fd7e14; color: white; }
+        .ctas-3 { background: #ffc107; color: #333; }
+        .ctas-4 { background: #28a745; color: white; }
+        .ctas-5 { background: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="health-card-gate" class="card" style="display: block; text-align: center; margin-top: 50px;">
+    <h2>Patient Verification</h2>
+    <p class="subtitle">Enter your 10-digit Health Card Number to begin.</p>
+    
+    <div class="q-box" style="margin-top: 20px;">
+        <input type="text" id="health-card-input" placeholder="1234-567-890" 
+               style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ccc; font-size: 1.2rem; text-align: center;">
+        <p id="gate-error" style="color: #dc3545; font-size: 0.8rem; margin-top: 10px; display: none;">
+            Invalid ID. Please enter at least 10 digits.
+        </p>
+    </div>
+
+    <button class="submit-btn" onclick="verifyHealthCard()">ACCESS TRIAGE AI</button>
+</div>
+<div class="card">
+    <h2>Brampton Triage AI</h2>
+    <p class="subtitle">Answer all questions to find the most appropriate care for your symptoms.</p>
+
+    <div class="section-title">Patient Information</div>
+    <div class="row2">
+        <div class="q-box age-input">
+            <div class="q-label">Age</div>
+            <input type="number" id="age" value="30" min="0" max="120">
+        </div>
+        <div class="q-box">
+            <div class="q-label">Biological Sex</div>
+            <div class="radio-group">
+                <label><input type="radio" name="sex" value="M" checked><span>Male</span></label>
+                <label><input type="radio" name="sex" value="F"><span>Female</span></label>
+                <label><input type="radio" name="sex" value="O"><span>Other</span></label>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">Physical Function</div>
+    <div class="q-box">
+        <div class="q-label">Difficulty speaking? <span class="q-val" id="speak-val">1</span></div>
+        <input type="range" id="speak" min="1" max="10" value="1" oninput="document.getElementById('speak-val').textContent=this.value">
+    </div>
+
+    <div class="q-box">
+        <div class="q-label">Difficulty walking? <span class="q-val" id="walk-val">1</span></div>
+        <input type="range" id="walk" min="1" max="10" value="1" oninput="document.getElementById('walk-val').textContent=this.value">
+    </div>
+
+    <div class="q-box">
+        <div class="q-label">Difficulty breathing? <span class="q-val" id="breath-val">1</span></div>
+        <input type="range" id="breath" min="1" max="10" value="1" oninput="document.getElementById('breath-val').textContent=this.value">
+    </div>
+
+    <div class="section-title">Pain</div>
+    <div class="q-box">
+        <div class="q-label">Pain level <span class="q-val" id="pain-val">0</span></div>
+        <input type="range" id="pain" min="0" max="10" value="0" oninput="document.getElementById('pain-val').textContent=this.value">
+    </div>
+
+    <div class="q-box">
+        <div class="q-label" style="margin-bottom:10px;">Location?</div>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="pain_loc" value="chest"><span>Chest</span></label>
+            <label><input type="checkbox" name="pain_loc" value="abdomen"><span>Abdomen</span></label>
+            <label><input type="checkbox" name="pain_loc" value="head"><span>Head</span></label>
+            <label><input type="checkbox" name="pain_loc" value="back"><span>Back</span></label>
+            <label><input type="checkbox" name="pain_loc" value="arm_leg"><span>Arm/Leg</span></label>
+        </div>
+    </div>
+
+    <div class="section-title">Neurological</div>
+    <div class="q-box">
+        <div class="q-label">Difficulty focusing? <span class="q-val" id="focus-val">1</span></div>
+        <input type="range" id="focus" min="1" max="10" value="1" oninput="document.getElementById('focus-val').textContent=this.value">
+    </div>
+
+    <div class="q-box">
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="neuro" value="confusion"><span>Confusion</span></label>
+            <label><input type="checkbox" name="neuro" value="vision"><span>Vision</span></label>
+            <label><input type="checkbox" name="neuro" value="slurred"><span>Slurred Speech</span></label>
+            <label><input type="checkbox" name="neuro" value="weakness"><span>Weakness</span></label>
+        </div>
+    </div>
+
+    <div class="section-title">Biometric Pulse Scan</div>
+    <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div id="camera-container" style="position: relative; width: 320px; height: 240px; border: 2px solid #333; background: #000;">
+            <video id="video" width="320" height="240" autoplay muted style="position: absolute; top:0; left:0;"></video>
+            <canvas id="overlay" width="320" height="240" style="position: absolute; top:0; left:0; z-index: 10;"></canvas>
+        </div>
+
+        <div style="flex-grow: 1; background: #222; color: #0f0; padding: 15px; font-family: monospace; border-radius: 8px; min-width: 200px;">
+            <div style="font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px;">BIOMETRIC MONITOR</div>
+            <div style="margin-top:10px;">Confidence: <span id="mon-conf">0</span></div>
+            <div>Brightness: <span id="mon-bright">0</span></div>
+            <canvas id="pulseGraph" width="200" height="80" style="border: 1px solid #444; margin-top: 10px; width: 100%;"></canvas>
+            <div style="font-size: 0.7rem; color: #888; margin-top: 5px;">Live Green-Channel Pulse</div>
+        </div>
+    </div>
+
+    <div class="q-box">
+        <div class="q-label">Additional Symptoms</div>
+        <textarea id="text_symptoms" placeholder="Describe symptoms here..."></textarea>
+    </div>
+
+    <button class="submit-btn" onclick="runTriage()" id="submit-btn">FIND BEST CARE FOR ME</button>
+
+    <div id="results">
+        <div class="result-label">Recommended care:</div>
+        <div class="result-name" id="target"></div>
+        <div id="ctas-badge" class="ctas-badge"></div>
+        <div class="result-meta">
+            <div class="result-chip">Wait: <span id="wait"></span></div>
+            <div class="result-chip">Severity: <span id="sev"></span>/10</div>
+            <div class="result-chip" style="color: white; background-color: white   ;">HR: <span id="res-hr">--</span> bpm</div>
+        </div>
+    </div>
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
+    <div style="font-size: 0.8rem; color: #666; margin-bottom: 4px;">Available On-Call Physician:</div>
+    <div id="doc-name" style="font-weight: bold; color: #333;"></div>
+    <div id="doc-specialty" style="font-size: 0.85rem; color: #555; font-style: italic;"></div>
+</div>
+</div>
+
+<script>
+
+    function verifyHealthCard() {
+    const input = document.getElementById('health-card-input').value;
+    const error = document.getElementById('gate-error');
+    
+    // Checks if the user entered at least 10 characters
+    if (input.trim().length >= 10) {
+        // 1. Hide the Gate
+        document.getElementById('health-card-gate').style.display = 'none';
+        
+        // 2. Show the Triage App
+        document.getElementById('main-triage-app').style.display = 'block';
+        
+        // 3. Start the Camera (Crucial step!)
+        startRPPG();
+    } else {
+        error.style.display = 'block';
+    }
+}
+const doctors = [
+    { name: "Dr. Aris Thorne", specialty: "Emergency Medicine Specialist" },
+    { name: "Dr. Elena Vance", specialty: "Critical Care Lead" },
+    { name: "Dr. Julian Kovic", specialty: "Triage Consultant" },
+    { name: "Dr. Sarah Chen", specialty: "General Practitioner" },
+    { name: "Dr. Marcus Reed", specialty: "Cardiology Fellow" }
+];
+let video = document.getElementById('video');
+let overlay = document.getElementById('overlay');
+let oCtx = overlay.getContext('2d', { willReadFrequently: true });
+let graphCanvas = document.getElementById('pulseGraph');
+let gCtx = graphCanvas.getContext('2d');
+
+let heartRateSamples = [];
+let lastConfidence = 0;
+let avgBrightness = 0;
+
+async function startRPPG() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            requestAnimationFrame(processFrame);
+        };
+    } catch (err) {
+        console.error("Camera access denied.");
+    }
+}
+
+function processFrame() {
+    if (video.paused || video.ended) return;
+
+    // 1. Draw video to overlay so user sees themselves
+    oCtx.drawImage(video, 0, 0, 320, 240);
+
+    // 2. Forehead Region of Interest (ROI)
+    const rx = 110, ry = 40, rw = 100, rh = 40;
+    
+    // Draw ROI Box
+    oCtx.strokeStyle = (lastConfidence > 0.5) ? "#00ff00" : "#ff0000";
+    oCtx.lineWidth = 2;
+    oCtx.strokeRect(rx, ry, rw, rh);
+    oCtx.fillStyle = "rgba(0, 255, 0, 0.1)";
+    oCtx.fillRect(rx, ry, rw, rh);
+
+    // 3. Extract RGB Data
+    const imgData = oCtx.getImageData(rx, ry, rw, rh);
+    const data = imgData.data;
+    let greenSum = 0;
+    let brightSum = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+        brightSum += (data[i] + data[i+1] + data[i+2]) / 3;
+        greenSum += data[i+1]; 
+    }
+
+    const avgGreen = greenSum / (data.length / 4);
+    avgBrightness = brightSum / (data.length / 4);
+
+    // 4. Update UI Monitor
+    lastConfidence = (avgBrightness > 40 && avgBrightness < 220) ? 0.95 : 0.15;
+    document.getElementById('mon-conf').innerText = lastConfidence.toFixed(2);
+    document.getElementById('mon-bright').innerText = Math.round(avgBrightness);
+
+    // 5. Store for Pulse
+    if (lastConfidence > 0.5) {
+        heartRateSamples.push(avgGreen);
+        if (heartRateSamples.length > 100) heartRateSamples.shift();
+    }
+
+    drawPulseGraph();
+    requestAnimationFrame(processFrame);
+}
+
+function drawPulseGraph() {
+    gCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+    if (heartRateSamples.length < 2) return;
+
+    const min = Math.min(...heartRateSamples);
+    const max = Math.max(...heartRateSamples);
+    const range = max - min || 1;
+
+    gCtx.beginPath();
+    gCtx.strokeStyle = "#00ff00";
+    gCtx.lineWidth = 2;
+
+    for (let i = 0; i < heartRateSamples.length; i++) {
+        const x = (i / 100) * graphCanvas.width;
+        const y = graphCanvas.height - ((heartRateSamples[i] - min) / range) * graphCanvas.height;
+        if (i === 0) gCtx.moveTo(x, y);
+        else gCtx.lineTo(x, y);
+    }
+    gCtx.stroke();
+}
+
+function getChecked(name) {
+    return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+}
+
+function getRadio(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+}
+
+function ctasLabel(severity) {
+    if (severity >= 9) return { label: "CTAS 1 — Resuscitation", cls: "ctas-1" };
+    if (severity >= 7) return { label: "CTAS 2 — Emergent", cls: "ctas-2" };
+    if (severity >= 5) return { label: "CTAS 3 — Urgent", cls: "ctas-3" };
+    if (severity >= 3) return { label: "CTAS 4 — Less Urgent", cls: "ctas-4" };
+    return { label: "CTAS 5 — Non-Urgent", cls: "ctas-5" };
+}
+
+async function runTriage() {
+    // Pick a random doctor from the list
+const randomDoc = doctors[Math.floor(Math.random() * doctors.length)];
+
+// Push their info to the screen
+document.getElementById('doc-name').textContent = randomDoc.name;
+document.getElementById('doc-specialty').textContent = randomDoc.specialty;
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Calculating...';
+
+    // Simple peak count for HR
+    let peaks = 0;
+    for (let i = 1; i < heartRateSamples.length - 1; i++) {
+        if (heartRateSamples[i] > heartRateSamples[i-1] && heartRateSamples[i] > heartRateSamples[i+1]) {
+            peaks++;
+        }
+    }
+    const estimatedHR = Math.round((peaks / 4) * 60); // Roughly 4-5 seconds of buffer
+
+    const startTriage = async (coords) => {
+        try {
+            const payload = {
+                age: parseInt(document.getElementById('age').value),
+                sex: getRadio('sex'),
+                speak: parseInt(document.getElementById('speak').value),
+                walk: parseInt(document.getElementById('walk').value),
+                breath: parseInt(document.getElementById('breath').value),
+                pain: parseInt(document.getElementById('pain').value),
+                focus: parseInt(document.getElementById('focus').value),
+                pain_loc: getChecked('pain_loc'),
+                neuro: getChecked('neuro'),
+                text_symptoms: document.getElementById('text_symptoms').value,
+                lat: coords.latitude,
+                lon: coords.longitude,
+                rppg_hr: estimatedHR || 72,
+                rppg_confidence: lastConfidence
+            };
+
+            const res = await fetch('/api/triage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            const ctas = ctasLabel(data.calc_severity);
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('target').textContent = data.target;
+            document.getElementById('wait').textContent = data.wait;
+            document.getElementById('sev').textContent = data.calc_severity;
+            document.getElementById('res-hr').textContent = estimatedHR || "--";
+
+            const badge = document.getElementById('ctas-badge');
+            badge.textContent = ctas.label;
+            badge.className = 'ctas-badge ' + ctas.cls;
+
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+
+        } catch (err) {
+            alert("Connection error.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'FIND BEST CARE FOR ME';
+        }
+    };
+
+    navigator.geolocation.getCurrentPosition(
+        pos => startTriage(pos.coords),
+        () => startTriage({ latitude: 43.73, longitude: -79.74 })
+    );
+}
+
+window.onload = startRPPG;
+</script>
+</body>
+</html>
